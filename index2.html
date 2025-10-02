@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador Reactivo con Sugerencias</title>
+    <style>
+        /* Estilos minimalistas para enfocarse en la funcionalidad */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .buscador-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.3);
+        }
+        
+        .sugerencias {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .sugerencia-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .sugerencia-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .sugerencia-item:last-child {
+            border-bottom: none;
+        }
+        
+        .sugerencia-activa {
+            background-color: #e6f2ff;
+        }
+        
+        .explicacion {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #4a90e2;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>Buscador Reactivo con Sugerencias</h1>
+    
+    <div class="buscador-container">
+        <!-- Input de búsqueda - elemento principal que dispara los eventos -->
+        <input 
+            type="text" 
+            id="buscador" 
+            placeholder="Escribe para buscar..." 
+            aria-label="Campo de búsqueda"
+        >
+        
+        <!-- Contenedor para las sugerencias que se mostrarán debajo del input -->
+        <div class="sugerencias" id="sugerencias"></div>
+    </div>
+    
+    <div class="explicacion">
+        <h3>¿Cómo funciona la programación reactiva en este ejemplo?</h3>
+        <p>La <strong>programación reactiva</strong> se basa en reaccionar a eventos o cambios de estado. En este caso:</p>
+        <ol>
+            <li>El evento <code>input</code> se dispara cada vez que el usuario teclea</li>
+            <li>Reaccionamos a este evento filtrando datos y mostrando sugerencias</li>
+            <li>El estado de la interfaz (sugerencias visibles) cambia reactivamente</li>
+            <li>También reaccionamos a eventos del teclado (flechas, Enter, Escape)</li>
+        </ol>
+        <p>Este patrón es fundamental en interfaces modernas y frameworks como React se basan en él.</p>
+    </div>
+
+    <script>
+        // =============================================
+        // CONCEPTOS DE PROGRAMACIÓN REACTIVA EXPLICADOS
+        // =============================================
+        
+        // 1. DATOS: Fuente de información que reaccionará a cambios
+        // En una aplicación real, estos datos podrían venir de una API
+        const datosEjemplo = [
+            "JavaScript", "React", "Vue.js", "Angular", "Node.js",
+            "Python", "Java", "C++", "PHP", "Ruby", "Go", "Rust",
+            "HTML", "CSS", "SASS", "TypeScript", "Swift", "Kotlin",
+            "Base de datos", "MySQL", "MongoDB", "PostgreSQL",
+            "Desarrollo web", "Aplicaciones móviles", "Machine Learning"
+        ];
+        
+        // 2. ELEMENTOS DEL DOM: Referencias a los nodos HTML con los que interactuaremos
+        // Estos serán nuestros "observables" - elementos que emitirán eventos
+        const inputBuscador = document.getElementById('buscador');
+        const contenedorSugerencias = document.getElementById('sugerencias');
+        
+        // 3. ESTADO: Variables que representan el estado actual de la aplicación
+        // En programación reactiva, el estado determina lo que se muestra
+        let sugerenciasActuales = [];
+        let indiceSugerenciaActiva = -1;
+        
+        // =============================================
+        // MANEJADORES DE EVENTOS (REACCIONES)
+        // =============================================
+        
+        // 4. REACCIÓN A CAMBIOS EN EL INPUT (evento input)
+        // Cada vez que el usuario escribe, filtramos y mostramos sugerencias
+        inputBuscador.addEventListener('input', function(e) {
+            const valor = e.target.value.trim().toLowerCase();
+            
+            // Si el campo está vacío, ocultamos sugerencias
+            if (valor === '') {
+                ocultarSugerencias();
+                return;
+            }
+            
+            // Filtramos los datos según lo que el usuario ha escrito
+            // Esto es una "transformación reactiva" de los datos
+            sugerenciasActuales = datosEjemplo.filter(item => 
+                item.toLowerCase().includes(valor)
+            );
+            
+            // Actualizamos la UI basándonos en el nuevo estado
+            mostrarSugerencias(sugerenciasActuales);
+        });
+        
+        // 5. REACCIÓN A TECLAS ESPECIALES (evento keydown)
+        // Permitimos navegar por las sugerencias con el teclado
+        inputBuscador.addEventListener('keydown', function(e) {
+            // Solo reaccionamos si hay sugerencias visibles
+            if (contenedorSugerencias.style.display !== 'block') return;
+            
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault(); // Evitamos que el cursor se mueva en el input
+                    navegarSugerencias(1); // Movimiento hacia abajo
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    navegarSugerencias(-1); // Movimiento hacia arriba
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    seleccionarSugerenciaActiva();
+                    break;
+                case 'Escape':
+                    ocultarSugerencias();
+                    break;
+            }
+        });
+        
+        // 6. REACCIÓN A CAMBIO DE FOCO (evento blur)
+        // Ocultamos sugerencias cuando el usuario hace clic fuera
+        inputBuscador.addEventListener('blur', function() {
+            // Pequeño retraso para permitir la selección con clic
+            setTimeout(ocultarSugerencias, 200);
+        });
+        
+        // 7. REACCIÓN AL VOLVER AL FOCO (evento focus)
+        // Mostramos sugerencias si ya había texto al volver al campo
+        inputBuscador.addEventListener('focus', function() {
+            if (inputBuscador.value.trim() !== '' && sugerenciasActuales.length > 0) {
+                mostrarSugerencias(sugerenciasActuales);
+            }
+        });
+        
+        // =============================================
+        // FUNCIONES DE ACTUALIZACIÓN DE UI
+        // =============================================
+        
+        // Función para mostrar las sugerencias en la interfaz
+        function mostrarSugerencias(sugerencias) {
+            // Limpiamos sugerencias anteriores
+            contenedorSugerencias.innerHTML = '';
+            
+            // Si no hay sugerencias, mostramos un mensaje
+            if (sugerencias.length === 0) {
+                const elemento = document.createElement('div');
+                elemento.classList.add('sugerencia-item');
+                elemento.textContent = 'No se encontraron resultados';
+                contenedorSugerencias.appendChild(elemento);
+            } else {
+                // Creamos un elemento por cada sugerencia
+                sugerencias.forEach((sugerencia, index) => {
+                    const elemento = document.createElement('div');
+                    elemento.classList.add('sugerencia-item');
+                    elemento.textContent = sugerencia;
+                    elemento.dataset.indice = index;
+                    
+                    // REACCIÓN AL CLIC: Seleccionar la sugerencia
+                    elemento.addEventListener('mousedown', function() {
+                        inputBuscador.value = sugerencia;
+                        ocultarSugerencias();
+                    });
+                    
+                    // REACCIÓN AL PASAR EL RATÓN: Resaltar sugerencia
+                    elemento.addEventListener('mouseover', function() {
+                        indiceSugerenciaActiva = index;
+                        actualizarSugerenciaActiva();
+                    });
+                    
+                    contenedorSugerencias.appendChild(elemento);
+                });
+            }
+            
+            // Hacemos visible el contenedor de sugerencias
+            contenedorSugerencias.style.display = 'block';
+            indiceSugerenciaActiva = -1;
+            actualizarSugerenciaActiva();
+        }
+        
+        // Función para ocultar las sugerencias
+        function ocultarSugerencias() {
+            contenedorSugerencias.style.display = 'none';
+            indiceSugerenciaActiva = -1;
+        }
+        
+        // Función para navegar entre sugerencias con teclado
+        function navegarSugerencias(direccion) {
+            const totalSugerencias = sugerenciasActuales.length;
+            
+            // Calculamos el nuevo índice
+            let nuevoIndice = indiceSugerenciaActiva + direccion;
+            
+            // Aseguramos que el índice esté dentro de los límites
+            if (nuevoIndice < 0) {
+                nuevoIndice = totalSugerencias - 1; // Ir al final
+            } else if (nuevoIndice >= totalSugerencias) {
+                nuevoIndice = 0; // Volver al inicio
+            }
+            
+            indiceSugerenciaActiva = nuevoIndice;
+            actualizarSugerenciaActiva();
+        }
+        
+        // Función para actualizar visualmente la sugerencia activa
+        function actualizarSugerenciaActiva() {
+            // Removemos la clase activa de todas las sugerencias
+            const todasSugerencias = contenedorSugerencias.querySelectorAll('.sugerencia-item');
+            todasSugerencias.forEach(item => item.classList.remove('sugerencia-activa'));
+            
+            // Añadimos la clase activa a la sugerencia actual
+            if (indiceSugerenciaActiva >= 0 && indiceSugerenciaActiva < todasSugerencias.length) {
+                todasSugerencias[indiceSugerenciaActiva].classList.add('sugerencia-activa');
+                
+                // Scroll para mantener visible la sugerencia activa
+                todasSugerencias[indiceSugerenciaActiva].scrollIntoView({
+                    block: 'nearest',
+                    behavior: 'smooth'
+                });
+            }
+        }
+        
+        // Función para seleccionar la sugerencia activa
+        function seleccionarSugerenciaActiva() {
+            if (indiceSugerenciaActiva >= 0 && indiceSugerenciaActiva < sugerenciasActuales.length) {
+                inputBuscador.value = sugerenciasActuales[indiceSugerenciaActiva];
+                ocultarSugerencias();
+                
+                // Podríamos disparar aquí una búsqueda real
+                console.log('Buscando:', inputBuscador.value);
+            }
+        }
+    </script>
+</body>
+</html>
